@@ -20,7 +20,7 @@ FetchContent_Declare(
 # 5. Fetch raylib
 FetchContent_MakeAvailable(raylib)
 
-# 6. Define source files (EXPLICITLY)
+# 6. Define source files
 file(GLOB_RECURSE SOURCES 
     CONFIGURE_DEPENDS  # This makes CMake rescan when files change
     "src/*.cpp"
@@ -35,14 +35,30 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-# 9. Link raylib and Linux system libraries
-target_link_libraries(${PROJECT_NAME} PRIVATE 
-    raylib
-    m           # Math library
-    dl          # Dynamic linking
-    pthread     # POSIX threads
-    X11         # X11 for Linux
-)
+# 9. Link raylib + platform-specific libraries
+if(EMSCRIPTEN)
+    # Web build: output index.html / index.js / index.wasm
+    target_link_libraries(${PROJECT_NAME} PRIVATE raylib)
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        OUTPUT_NAME "index"
+        SUFFIX ".html"
+    )
+    target_link_options(${PROJECT_NAME} PRIVATE
+        "-sUSE_GLFW=3"
+        "-sALLOW_MEMORY_GROWTH=1"
+        "-sASSERTIONS=0"
+        "--shell-file" "${raylib_SOURCE_DIR}/src/minshell.html"
+    )
+else()
+    # Native Linux build
+    target_link_libraries(${PROJECT_NAME} PRIVATE 
+        raylib
+        m           # Math library
+        dl          # Dynamic linking
+        pthread     # POSIX threads
+        X11         # X11 for Linux
+    )
+endif()
 
 # 10. Set output directory
 set_target_properties(${PROJECT_NAME} PROPERTIES
@@ -51,7 +67,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 # 11. Print confirmation
 message(STATUS "=========================================")
-message(STATUS "Building ${PROJECT_NAME} on Linux")
+message(STATUS "Building ${PROJECT_NAME}")
+message(STATUS "Platform: ${CMAKE_SYSTEM_NAME}")
 message(STATUS "Sources: ${SOURCES}")
-message(STATUS "Output: ${CMAKE_BINARY_DIR}/${PROJECT_NAME}")
+message(STATUS "Output: ${CMAKE_BINARY_DIR}")
 message(STATUS "=========================================")

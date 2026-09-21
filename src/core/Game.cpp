@@ -1,5 +1,9 @@
 #include "Game.hpp"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten/emscripten.h>
+#endif
+
 // Constructor
 Game::Game() {
     Init();
@@ -154,22 +158,41 @@ void Game::DrawUI() {
         DrawText(TextFormat("Turbo Points: %d/25", player.GetTurboPoints()), 10, 260, 20, WHITE);
     }
     
-    DrawText(TextFormat("Rotation: %.0f°", player.GetRotation()), 10, 290, 20, WHITE);
+    DrawText(TextFormat("Rotation: %.0f deg", player.GetRotation()), 10, 290, 20, WHITE);
     DrawText(TextFormat("Bullets: %zu", player.GetBullets().size()), 10, 320, 20, WHITE);
     
     // Rock counter
     DrawText(TextFormat("Rocks: %zu", rocks.size()), 10, 350, 20, RED);
 }
 
+// One frame of the game — shared by native and web loops
+void Game::Step() {
+    float deltaTime = GetFrameTime();
+    
+    HandleInput();
+    Update(deltaTime);
+    Draw();
+}
+
+#ifdef __EMSCRIPTEN__
+// Emscripten needs a plain function pointer, so route through a static pointer
+static Game* g_game = nullptr;
+
+static void WebFrame() {
+    if (g_game) g_game->Step();
+}
+#endif
+
 // Main game loop
 void Game::Run() {
+#ifdef __EMSCRIPTEN__
+    g_game = this;
+    emscripten_set_main_loop(WebFrame, 0, 1);   // 0 fps = match display refresh rate
+#else
     while (!WindowShouldClose() && isRunning) {
-        float deltaTime = GetFrameTime();
-        
-        HandleInput();
-        Update(deltaTime);
-        Draw();
+        Step();
     }
+#endif
 }
 
 // Shutdown

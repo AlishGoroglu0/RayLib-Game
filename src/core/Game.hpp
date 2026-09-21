@@ -26,4 +26,5 @@ public:
     void DrawUI();
     void Run();
     void Shutdown();
+    void Step();
 };
